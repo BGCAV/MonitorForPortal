@@ -1,0 +1,51 @@
+Required Resource:
+- login to Utility Machine.
+- Download MonitorForPortal from BGCAV github into SportsManSQLServer config directory. 
+  - Need: personal cell phone & github credentials
+Install Instructions
+- Create directory: "C:\Users\%username%\Desktop\sportsManSQLPortalProcessMonitor\Package"
+- Create directory: "C:\Users\%username%\Desktop\sportsManSQLPortalProcessMonitor\Log"
+- Copy "Package\" from SportsManSQLServer config directory to "C:\Users\%username%\Desktop\sportsManSQLPortalProcessMonitor\Package"
+- View:
+    - processStartSportsManSQL.cmd ensure the following are correct:
+      - title on "start" command: "portal.exe"
+      - start path to portal.exec process is correct
+    - dnsResolutionCheckPeakSoftware.cmd ensure following are correct:
+      - "gateway.activityreg.com" is specified as dnsResolutionCheck.cmd's first argument.
+    - processMonitorRunningSportsManSQL.cmd
+      -"portal.exe" "processStartSportsManSQL.cmd" "logAnalyzerSportsManSQL.cmd" 60 as processMonitorRunning.cmd arguments
+- Task Manager Import XML:  
+  - C:\Users\%username%\Desktop\sportsManSQLPortalProcessMonitor\Package\taskSchedulerSportsManSQLMonitor.xml
+  - Ensure the scheduler:
+    - Doesn't start more than one concurrent instance of this task.  A previous instance of this
+      task may be running due to a network connectivity issue that hasn't been resolved.
+    - It's frequency - period between executions, is greater than the intervals required to start
+      and potentially terminate the process.  At this time, this frequency should be =>3min and <=10min.
+      Additionally, the task's frequency must be fast enough to detect a "relevant" log entry. Currently,
+      only one log entry indicating a connection failure triggers the restart of Portal.exe.  This log entry
+      is repeated every second for a few hours.  Therefore, a frequency of 5min during the first few hours 
+      will always detect this error because the current log entry will be at most 1 second old.  Furthermore,
+      the log analyzer isn't currently "smart enough" to ignore the last log entry it reviewed to 
+      arrive at its decision.  Therefore, the frequency must be long enough, so the "current" relevant log
+      entry isn't considered relevant again when this task executes.  The SportsManSQL log analyzer reviews
+      messages issued within 10sec of when it's executed.
+    - Given the above constraints, a frequency of 5min seems sensible.  As it satisfies a two minute start
+      and termination cycle, will attempt to restart the task 12 times/hour, whenever it starts during the
+      first 3-4 hours, if the failure is related to DNS, there should be a relevant log entry, the
+      interval is long enough to "forget" the prior relevant log entry that triggered the last
+      attempted restart, and finally, it's quick enough so individuals using the website and the Club's staff
+      don't become impatient.
+- TestInstallation:
+  - disable network connection.
+  - After network failure causes Portal restart, enable network connection
+  - Process monitor should attempt to restart Portal process.
+  - Once the above successfully completes, Shutdown SportsManSQL.
+  - Restart SportsManSQL.
+  - Portal process monitor should successfully restart the Portal.
+- if all works as expected perform permanent install:
+  - shutdown SportsManSQL.
+  - revert its image
+  - reinstall portal process monitor
+  - shutdown SportsManSQL
+  - Create new snapshot.
+  - Restart SportsManSQL - process monitor should properly start it..

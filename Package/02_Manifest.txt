@@ -1,0 +1,74 @@
+Manifest
+
+FileName                                    Purpose
+01_InstallInstructions.fileTxtTail          A set of steps to install this package to BGCAV's SportsManSQL server.
+
+02_Manifest                                 This file.  Provides some basic information on this package's structure.
+
+processMonitorRunningSportsManSQL.cmd       It's the primary script that's called by Task Scheduler to perform monitoring
+                                            of SportsManSQL's Portal process.  Configures processMonitorRunning.cmd with
+                                            these specific SportsManSQL settings:
+                                            - Name of process to monitor.
+                                            - Name of program/script that starts the monitored process.
+                                            - Name of program/script that analyzes the process' log
+
+                                            Relies On:
+                                            - processMonitorRunning.cmd
+                                            - processStartSportsManSQL.cmd
+                                            - logAnalyzerSportsManSQL.cmd
+
+processMonitorRunning.cmd                   Implements the processing monitoring framework.  This framework determines if
+                                            the configured "process" is currently running.  If not, it starts this process by
+                                            executing a provided program/script.  The framework then executes the configured
+                                            log analyzer.  The analyzer determines the "disposition" of monitored process.  If
+                                            it suggests that the process would benefit from a restart, the framework performs
+                                            this restart.
+
+                                            Relies On:
+                                            - processShutdown.cmd
+
+processShutdown.cmd                         Terminates a running process using its process id.  First attempts to gracefully
+                                            end task allotting it a grace period to finish.  If it fails to terminate
+                                            within this grace period, it is immediately terminated. 
+
+processStartSportsManSQL.cmd                A script that starts SportsManSQL's Portal process.  It calls dnsResolutionCheckPeakSoftware.cmd
+                                            to ensure network connectivity before attempting to start Portal.exe.
+
+                                            Relies On:
+                                            - Portal.exe
+                                            - dnsResolutionCheckPeakSoftware.cmd
+                                                
+logAnalyzerSportsManSQL.cmd                 Analyzes the SportsManSQL's Portal process' log.  It determines if this process would
+                                            benefit from a restart.  It is the one of the arguments bound/configured
+                                            by processMonitorRunningSportsManSQL.cmd
+
+                                            Relies On:
+                                            - dateMath.cmd
+                                            - fileTxtTail.cmd
+
+dnsResolutionCheckPeakSoftware.cmd          Configures dnsResolutionCheck.cmd with specific SportsManSQL dns request and applies an exponential
+                                            back off algorithm until network connectivity is established and Peak Software's gateway url is 
+                                            properly resolved to a responsive IP.
+
+                                            Relies On:
+                                            - dnsResolutionCheck.cmd
+                                            - retryCommandExponentialBackoff.cmd
+
+dnsResolutionCheck.cmd                      Tests IP network connectivity by first pinging a static, reliable IP address.  It then
+                                            issues another ping using a specific URL.
+
+retryCommandExponentialBackoff.cmd          A script that attempts to start the provided program/script until it successfully completes.
+                                            Attempts are exponentially spaced after each successive failure until this interval exceeds
+                                            an upper limit.  Once reached, this limit becomes the retry (space) interval.
+
+dateMath.cmd                                Offers various date functions, like computing an interval, in days, between dates.
+
+fileTxtTail.cmd                             Provides rudimentary linux "tail" function.
+
+taskSchedulerSportsManSQLMonitor.xml        XML used to create the periodic task that executes processMonitorRunningSportsManSQL.cmd.
+                                            It defines various task attributes of this task, such as, it frequency.  The frequency/
+                                            interval between executions should be greater than:
+                                            - The time necessary to start the process added to
+                                            - the time necessary to terminate the process.
+                                            The SportsManSQL startup process typically requires ~30 seconds to completely prepare the
+                                            server to accept connections.
